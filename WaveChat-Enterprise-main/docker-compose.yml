@@ -1,0 +1,47 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      MONGODB_URI: mongodb://mongo:27017/wavechat
+      JWT_ACCESS_SECRET: docker-access-secret-change-me
+      JWT_REFRESH_SECRET: docker-refresh-secret-change-me
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 30
+      CLIENT_ORIGIN: http://localhost:5173
+      UPLOAD_DIR: uploads
+      MAX_UPLOAD_MB: 20
+    ports:
+      - "4000:4000"
+    volumes:
+      - uploads_data:/app/apps/server/uploads
+    depends_on:
+      - mongo
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:4000/api
+        VITE_SOCKET_URL: http://localhost:4000
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
+  uploads_data:
